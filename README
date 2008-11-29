@@ -1,0 +1,9 @@
+rcirc
+=====
+
+rcirc is a ruby irc-bot framework. It ships with an implementation of xkcd's Bucket bot.
+
+Wishlist
+========
+
+- A git commit hook and bot which reports commits.

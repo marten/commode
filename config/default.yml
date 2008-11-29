@@ -1,0 +1,9 @@
+--- 
+:server: andromache.mhil.net
+:port: 6667
+:nicks: 
+- mark-ii
+- ijbotma
+:realname: Marks Hashmap
+:channels: 
+- "#marten"

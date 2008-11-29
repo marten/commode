@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby 
+
+$:.unshift("vendor")
+$:.unshift("vendor/commode")
+$:.unshift("modules")
+
+require 'rubygems'
+require 'core_extensions/array'
+require 'bot'
+require 'bucket'
+
+config_file = File.dirname(__FILE__) + '/config/default.yml'
+if !File.exists?(config_file)
+  STDERR.puts("Config file at ``#{config_file}'' not found")
+  exit 1
+end
+
+options = File.open(config_file) {|f| YAML::load(f)}
+
+@bot = Commode::Bot.new(options)
+
+@bot.modules << Bucket.new(@bot)
+
+@bot.irc_loop
