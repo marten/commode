@@ -31,9 +31,11 @@ module Commode
       eval <<-END
         def handle_#{method_name}(*args)
           @modules.each do |i|
-            if i.respond_to?(:#{method_name}) 
-              i.#{method_name}(*args) 
-            end rescue handle_error(*args)
+	    begin
+              i.#{method_name}(*args) if i.respond_to?(:#{method_name}) 
+            rescue => e
+	      handle_error(e, *args)
+	    end
           end
         end
       END
