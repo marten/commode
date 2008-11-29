@@ -2,11 +2,11 @@
 
 $:.unshift("vendor")
 $:.unshift("vendor/commode")
+$:.unshift("vendor/commode/plugins")
 $:.unshift("modules")
 
 require 'rubygems'
-require 'core_extensions/array'
-require 'bot'
+require 'commode'
 require 'bucket'
 
 config_file = File.dirname(__FILE__) + '/config/default.yml'

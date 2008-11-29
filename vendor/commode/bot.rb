@@ -39,7 +39,8 @@ module Commode
     def initialize(options = {})
       @start_time = Time.now
 
-      @server   = options[:server]
+      @servers  = options[:servers]
+      @nextserver = 0
       @port     = options[:port]     || 6667
       @nicks    = options[:nicks]    || ['IRCBot1', 'IRCBot2', 'IRCBot3']
       @nick     = @nicks.first
@@ -65,6 +66,7 @@ module Commode
 	end
 
 	# Disconnected?  Wait a little while and start up again.
+	@nextserver = (@nextserver+1) % @servers.length
 	sleep 30
 	@irc.stop_listening
 	self.connect_socket
@@ -77,7 +79,7 @@ module Commode
     # Sets up a socket and a handler to join channels specified
     def connect_socket
       @irc = Net::YAIL.new(
-	:address    => @server,
+	:address    => @servers[@nextserver],
 	:port       => @port,
 	:username   => @nick,
 	:realname   => @realname,

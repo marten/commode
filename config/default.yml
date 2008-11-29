@@ -1,5 +1,7 @@
 --- 
-:server: andromache.mhil.net
+:servers: 
+- andromache.mhil.net
+- dimension.mhil.net
 :port: 6667
 :nicks: 
 - mark-ii

@@ -1,20 +1,27 @@
-class Bucket
+class Bucket < AbstractModule
+
+  include Commode::Plugins::HasMaster
 
   attr_accessor :probability, :master
 
   def initialize(bot)
-    @bot = bot
+    super(bot)
+
     @brain = Hash.new([])
-    @probability = 1
+    @probability = 0.2
     @master = "marten"
+
+    load_brain rescue nil
+    Thread.new { while true; sleep 120; save_brain; end }
   end
 
   def incoming_channel(fullactor, actor, target, text)
     case text
     when /^#{@bot.nick}[:,] vergeet (.*)/
-      return unless actor == @master
-      forget($1)
-      @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
+      when_is_master(actor) do
+        forget($1)
+        @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
+      end
 
     when /^#{@bot.nick}[:,] verander je naam in (.*)/
       return unless actor == @master
@@ -42,7 +49,7 @@ class Bucket
       @bot.send(target, response) if response
     
     when /^#{@bot.nick}[:,] debug$/
-      response = braindump
+      response = @brain.inspect
       @bot.send(target, response) if response
     
     when /^#{@bot.nick}[:,] herlaad/ 
@@ -51,8 +58,8 @@ class Bucket
       @bot.send(target, "Ok, #{actor}. Helemaal nieuw en glimmend.")
     
     when /^#{@bot.nick}[:,] (.*)/
-      response = reply($1)
-      @bot.send(target, response) if response
+      response_lines = reply(text).split("\n") 
+      response_lines.each {|response| @bot.send(target, response) } if response_lines
     
     else
       # zijn we gemute?
@@ -61,14 +68,24 @@ class Bucket
 	@talkfrom = nil
       end
 
-      response = maybe { reply(text) } 
-      @bot.send(target, response) if response
+      response_lines = maybe { reply(text).split("\n") } 
+      response_lines.each {|response| @bot.send(target, response) } if response_lines
     end
   end
 
   def incoming_invite(fullactor, actor, target)
     return unless actor == @master
     @bot.join(target)
+  end
+
+  def incoming_join(fullactor, actor, target)
+    response = @brain["join-" + actor]
+    @bot.send(target, response.at_rand) if response
+  end
+
+  def incoming_part(fullactor, actor, target)
+    response = @brain["part-" + actor]
+    @bot.send(target, response.at_rand) if response
   end
 
   protected
@@ -94,10 +111,6 @@ class Bucket
     end
   end
   
-  def braindump
-    @brain.inspect
-  end
-
   def reply(possible_factoid)
     response = @brain.select() {|k,v| possible_factoid =~ /#{k}/ }
     response.at_rand()[1].at_rand
@@ -112,7 +125,21 @@ class Bucket
   end
 
   def reload
+    save_brain
     load __FILE__
+  end
+
+  def brain_file
+   File.join(File.dirname(__FILE__), 'bucket-brain.yaml') 
+  end
+
+  def load_brain
+    @brain = File.open(brain_file) { |f| YAML::load(f) }
+  end
+
+  def save_brain
+    puts "Saving brain"
+    File.open(brain_file, 'w') {|f| f.puts @brain.to_yaml}
   end
   
 end
