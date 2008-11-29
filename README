@@ -1,9 +1,3 @@
-rcirc
-=====
+Commode is inspired by Cabinet (http://l.armory.com/~cerise/cabinet/).
 
-rcirc is a ruby irc-bot framework. It ships with an implementation of xkcd's Bucket bot.
-
-Wishlist
-========
-
-- A git commit hook and bot which reports commits.
+It run modules from the modules/ directory.
