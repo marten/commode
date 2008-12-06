@@ -1,3 +1,5 @@
+require 'pp'
+
 class Bucket < AbstractModule
 
   include Commode::Plugins::HasMaster
@@ -8,7 +10,7 @@ class Bucket < AbstractModule
     super(bot)
 
     @brain = Hash.new([])
-    @probability = 0.2
+    @probability = 0.3
     @master = "marten"
 
     load_brain rescue nil
@@ -18,10 +20,9 @@ class Bucket < AbstractModule
   def incoming_channel(fullactor, actor, target, text)
     case text
     when /^#{@bot.nick}[:,] vergeet (.*)/
-      when_is_master(actor) do
-        forget($1)
-        @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
-      end
+      return unless actor == @master
+      forget($1)
+      @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
 
     when /^#{@bot.nick}[:,] verander je naam in (.*)/
       return unless actor == @master
@@ -30,18 +31,26 @@ class Bucket < AbstractModule
     when /^#{@bot.nick}[:,] scheer je weg!/
       return unless actor == @master
       @bot.part(target)
+
+    when /^#{@bot.nick}[:,] kom je ook naar (\#.*)/
+      @bot.join($1)
+      @bot.send(target, "Zie je daar!")
     
-    when /^#{@bot.nick}[:,] (.*) is ook (.*)/
+    when /^#{@bot.nick}[:,] (.*) \+= (.*)/
       remember_also($1, $2)
       @bot.send(target, "Ok, #{actor}.")
     
-    when /^#{@bot.nick}[:,] (.*) is (.*)/
+    when /^#{@bot.nick}[:,] (.*) = (.*)/
       remember($1, $2)
       @bot.send(target, "Ok, #{actor}.")
     
-    when /^#{@bot.nick}[:,] (stil (eens|jij)
-			    |is je (numwis.|stage) al af\??)/x
-      @talkfrom = Time.now + 60
+    when /^#{@bot.nick}[:,]\s(stil\seens|
+			      stil\sjij|
+			      ga\sdood|
+			      sterf|
+			      donder\sop|
+			      is\sje\snumwis2\sal\saf\??)/x
+      @talkfrom = Time.now + 300
       @bot.send(target, "Ok. Aan de numwis2 maar weer!")
     
     when /^#{@bot.nick}[:,] herhaal (.*)/
@@ -49,8 +58,9 @@ class Bucket < AbstractModule
       @bot.send(target, response) if response
     
     when /^#{@bot.nick}[:,] debug$/
-      response = @brain.inspect
-      @bot.send(target, response) if response
+      puts "\n\nDEBUG\n"
+      pp @brain
+      puts "\n\n"
     
     when /^#{@bot.nick}[:,] herlaad/ 
       return unless actor == @master
@@ -83,7 +93,7 @@ class Bucket < AbstractModule
     @bot.send(target, response.at_rand) if response
   end
 
-  def incoming_part(fullactor, actor, target)
+  def incoming_part(fullactor, actor, target, message)
     response = @brain["part-" + actor]
     @bot.send(target, response.at_rand) if response
   end
@@ -112,16 +122,13 @@ class Bucket < AbstractModule
   end
   
   def reply(possible_factoid)
-    response = @brain.select() {|k,v| possible_factoid =~ /#{k}/ }
-    response.at_rand()[1].at_rand
+    response = @brain.select() {|k,v| possible_factoid.include? k }
+    return [] unless response and not response.empty?
+    response.at_rand()[1].at_rand 
   end
 
   def maybe
     yield if rand() < @probability
-  end
-
-  def unescape(text)
-    text.gsub!(/\\is/, "is")
   end
 
   def reload
