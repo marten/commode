@@ -1,3 +1,11 @@
 Commode is inspired by Cabinet (http://l.armory.com/~cerise/cabinet/).
 
-It run modules from the modules/ directory.
+It runs modules from the modules/ directory.
+
+
+# TODO
+
+  * lange multilines kunnen maken
+  * time-triggered events
+  * haakjes sluiten mits na n seconden geen nieuwe berichten
+  * regex triggers

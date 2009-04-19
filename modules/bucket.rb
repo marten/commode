@@ -23,27 +23,23 @@ class Bucket < AbstractModule
       return unless actor == @master
       forget($1)
       @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
-
+      
     when /^#{@bot.nick}[:,] verander je naam in (.*)/
       return unless actor == @master
       @bot.nick = $1
-    
+      
     when /^#{@bot.nick}[:,] scheer je weg!/
       return unless actor == @master
       @bot.part(target)
-
+      
     when /^#{@bot.nick}[:,] kom je ook naar (\#.*)/
       @bot.join($1)
       @bot.send(target, "Zie je daar!")
-    
-    when /^#{@bot.nick}[:,] (.*) \+= (.*)/
-      remember_also($1, $2)
-      @bot.send(target, "Ok, #{actor}.")
-    
-    when /^#{@bot.nick}[:,] (.*) = (.*)/
+      
+    when /^#{@bot.nick}[:,] (.*) \+?= (.*)/
       remember($1, $2)
       @bot.send(target, "Ok, #{actor}.")
-    
+      
     when /^#{@bot.nick}[:,]\s(stil\seens|
 			      stil\sjij|
 			      ga\sdood|
@@ -68,7 +64,7 @@ class Bucket < AbstractModule
       @bot.send(target, "Ok, #{actor}. Helemaal nieuw en glimmend.")
     
     when /^#{@bot.nick}[:,] (.*)/
-      response_lines = reply(text).split("\n") 
+      response_lines = reply(text).split("\\n") 
       response_lines.each {|response| @bot.send(target, response) } if response_lines
     
     else
@@ -78,7 +74,7 @@ class Bucket < AbstractModule
 	@talkfrom = nil
       end
 
-      response_lines = maybe { reply(text).split("\n") } 
+      response_lines = maybe { reply(text).to_s.split("\\n") } 
       response_lines.each {|response| @bot.send(target, response) } if response_lines
     end
   end
@@ -101,7 +97,11 @@ class Bucket < AbstractModule
   protected
 
   def remember(factoid, answer)
-    @brain[factoid] = [answer]
+    if not @brain[factoid]
+      @brain[factoid] = [answer]
+    else
+      @brain[factoid] << answer
+    end
   end
 
   def remember_also(factoid, answer)
@@ -139,7 +139,7 @@ class Bucket < AbstractModule
   def brain_file
    File.join(File.dirname(__FILE__), 'bucket-brain.yaml') 
   end
-
+  
   def load_brain
     @brain = File.open(brain_file) { |f| YAML::load(f) }
   end
@@ -150,3 +150,4 @@ class Bucket < AbstractModule
   end
   
 end
+

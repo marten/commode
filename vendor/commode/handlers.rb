@@ -6,7 +6,7 @@ module Commode
     def handle_incoming_welcome(text, args)
       @channels.each do |channel| 
 	@irc.join(channel)
-	@irc.msg(channel, "oeps, verslapen o.0;;;; had hier een half uur geleden al moeten zijn")
+	# @irc.msg(channel, "oeps, verslapen o.0;;;; had hier een half uur geleden al moeten zijn")
       end
       return false
     end
@@ -43,7 +43,7 @@ module Commode
         end
       END
     end
-
+      
     # :nodoc:
     def handle_error(exception, *args)
       STDERR.puts("Exception for: " + args.inspect)
