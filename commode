@@ -6,8 +6,11 @@ $:.unshift("vendor/commode/plugins")
 $:.unshift("modules")
 
 require 'rubygems'
+require 'pp'
 require 'commode'
+require 'control'
 require 'bucket'
+require 'braces'
 
 config_file = File.dirname(__FILE__) + '/config/default.yml'
 if !File.exists?(config_file)
@@ -18,7 +21,7 @@ end
 options = File.open(config_file) {|f| YAML::load(f)}
 
 @bot = Commode::Bot.new(options)
-
-@bot.modules << Bucket.new(@bot)
-
+@bot.modules << Control.new(@bot)  # Manage things like joining and parting channels, reloading
+@bot.modules << Braces.new(@bot)   # Punish people for not balancing parentheses
+@bot.modules << Bucket.new(@bot)   # Factoid delivering infobot
 @bot.irc_loop

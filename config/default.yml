@@ -1,12 +1,13 @@
 --- 
 :servers: 
+- irc.mhil.net
 - andromache.mhil.net
-- dimension.mhil.net
 :port: 6667
 :nicks: 
 - ijbema
 - archetyp3
 :realname: Marks Hashmap
 :channels: 
-- "#perio"
 - "#brak"
+- "#perio"
+- "#ijbema"

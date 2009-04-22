@@ -59,18 +59,18 @@ module Commode
     # the socket dies.
     def irc_loop
       while true
-	until @irc.dead_socket
-	  sleep 15
-	  @irc.handle(:irc_loop)
-	  Thread.pass
-	end
+        until @irc.dead_socket
+          sleep 15
+          @irc.handle(:irc_loop)
+          Thread.pass
+        end
 
-	# Disconnected?  Wait a little while and start up again.
-	@nextserver = (@nextserver+1) % @servers.length
-	sleep 30
-	@irc.stop_listening
-	self.connect_socket
-	start_listening
+        # Disconnected?  Wait a little while and start up again.
+        @nextserver = (@nextserver+1) % @servers.length
+        sleep 30
+        @irc.stop_listening
+        self.connect_socket
+        start_listening
       end
     end
 
@@ -79,19 +79,19 @@ module Commode
     # Sets up a socket and a handler to join channels specified
     def connect_socket
       @irc = Net::YAIL.new(
-	:address    => @servers[@nextserver],
-	:port       => @port,
-	:username   => @nick,
-	:realname   => @realname,
-	:nicknames  => @nicks,
-	:silent     => false,
-	:loud       => false
+        :address    => @servers[@nextserver],
+        :port       => @port,
+        :username   => @nick,
+        :realname   => @realname,
+        :nicknames  => @nicks,
+        :silent     => false,
+        :loud       => false
       )
 
       # Simple hook for welcome to allow auto-joining of the channel
       EVENTS.each do |event|
-	@irc.prepend_handler(event.to_sym,
-			     self.method(("handle_" + event).to_sym))
+        @irc.prepend_handler(event.to_sym,
+                             self.method(("handle_" + event).to_sym))
       end
     end
 
@@ -100,7 +100,7 @@ module Commode
       # If socket's already dead (probably couldn't connect to server), don't
       # try to listen!
       if @irc.dead_socket
-	$stderr.puts "Dead socket, can't start listening!"
+        $stderr.puts "Dead socket, can't start listening!"
       end
 
       @irc.start_listening

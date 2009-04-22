@@ -5,8 +5,8 @@ module Commode
     # successful registration
     def handle_incoming_welcome(text, args)
       @channels.each do |channel| 
-	@irc.join(channel)
-	# @irc.msg(channel, "oeps, verslapen o.0;;;; had hier een half uur geleden al moeten zijn")
+        @irc.join(channel)
+        # @irc.msg(channel, "oeps, verslapen o.0;;;; had hier een half uur geleden al moeten zijn")
       end
       return false
     end
@@ -15,10 +15,10 @@ module Commode
     def handle_incoming_invite(*args);  false; end
     
     def handle_incoming_msg(fullactor, actor, channel, text);    
-      if channel =~ /#{nick}/
-	handle_incoming_private(fullactor, actor, channel, text)
+      if channel =~ /^#{nick}/
+        handle_incoming_private(fullactor, actor, channel, text)
       else
-	handle_incoming_channel(fullactor, actor, channel, text)
+        handle_incoming_channel(fullactor, actor, channel, text)
       end
     end
    
@@ -34,11 +34,12 @@ module Commode
       eval <<-END
         def handle_#{method_name}(*args)
           @modules.each do |i|
-	    begin
-              i.#{method_name}(*args) if i.respond_to?(:#{method_name}) 
+            begin
+              result = i.#{method_name}(*args) if i.respond_to?(:#{method_name})
+              return if result == false
             rescue => e
-	      handle_error(e, *args)
-	    end
+              handle_error(e, *args)
+            end
           end
         end
       END

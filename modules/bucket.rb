@@ -1,5 +1,3 @@
-require 'pp'
-
 class Bucket < AbstractModule
 
   include Commode::Plugins::HasMaster
@@ -24,31 +22,10 @@ class Bucket < AbstractModule
       forget($1)
       @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
       
-    when /^#{@bot.nick}[:,] verander je naam in (.*)/
-      return unless actor == @master
-      @bot.nick = $1
-      
-    when /^#{@bot.nick}[:,] scheer je weg!/
-      return unless actor == @master
-      @bot.part(target)
-      
-    when /^#{@bot.nick}[:,] kom je ook naar (\#.*)/
-      @bot.join($1)
-      @bot.send(target, "Zie je daar!")
-      
     when /^#{@bot.nick}[:,] (.*) \+?= (.*)/
       remember($1, $2)
-      @bot.send(target, "Ok, #{actor}.")
+      @bot.send(target, "wat ooit")
       
-    when /^#{@bot.nick}[:,]\s(stil\seens|
-			      stil\sjij|
-			      ga\sdood|
-			      sterf|
-			      donder\sop|
-			      is\sje\snumwis2\sal\saf\??)/x
-      @talkfrom = Time.now + 300
-      @bot.send(target, "Ok. Aan de numwis2 maar weer!")
-    
     when /^#{@bot.nick}[:,] herhaal (.*)/
       response = recite($1)
       @bot.send(target, response) if response
@@ -58,30 +35,15 @@ class Bucket < AbstractModule
       pp @brain
       puts "\n\n"
     
-    when /^#{@bot.nick}[:,] herlaad/ 
-      return unless actor == @master
-      reload
-      @bot.send(target, "Ok, #{actor}. Helemaal nieuw en glimmend.")
-    
     when /^#{@bot.nick}[:,] (.*)/
-      response_lines = reply(text).split("\\n") 
-      response_lines.each {|response| @bot.send(target, response) } if response_lines
+      respond_to_possible_factoid(target, actor, text)
     
     else
       # zijn we gemute?
-      if @talkfrom
-	return if @talkfrom >= Time.now
-	@talkfrom = nil
-      end
+      return if @bot.silenced?
+      maybe { respond_to_possible_factoid(target, actor, text) }
 
-      response_lines = maybe { reply(text).to_s.split("\\n") } 
-      response_lines.each {|response| @bot.send(target, response) } if response_lines
     end
-  end
-
-  def incoming_invite(fullactor, actor, target)
-    return unless actor == @master
-    @bot.join(target)
   end
 
   def incoming_join(fullactor, actor, target)
@@ -94,7 +56,58 @@ class Bucket < AbstractModule
     @bot.send(target, response.at_rand) if response
   end
 
+  def reload
+    save_brain
+    load __FILE__
+    load_brain
+  end
+
   protected
+  
+  def respond_to_possible_factoid(channel, nick, text)
+    # First, find all possibly matching factoids
+    factoids = @brain.select() do |k,v| 
+      case k
+      when /^\/(.*)\/$/
+        text.match(Regexp.new($1))
+      else
+        text.include? k
+      end
+    end
+    
+    return if factoids.empty?
+    
+    factoids = factoids.to_hash
+    # Then pick one factoid at random
+    factoid = factoids[factoids.keys.at_rand()]
+    # Then pick one response this factoid at random
+    response = factoid.at_rand()
+    # Split at linebreaks and send as multiple messages
+    response_lines = response.split("\\n") 
+    
+    # SEND
+    response_lines.each do |line|
+      line.gsub!("$who", nick)
+      line.gsub!("$someone") do |match|
+        @names ||= @bot.names(channel)
+        @names.at_rand
+      end
+      @names = nil
+      
+      case line
+      when /^<reply>(.*)/
+        @bot.send(channel, $1)
+      when /^<action>(.*)/
+        @bot.act(channel, $1)
+      when /^<kick (.*)>(.*)/
+        @bot.kick(channel, $1, $2)
+      when /^<kick>(.*)/
+        @bot.kick(channel, nick, $1)
+      else
+        @bot.send(channel, line)
+      end
+    end
+  end
 
   def remember(factoid, answer)
     if not @brain[factoid]
@@ -121,19 +134,8 @@ class Bucket < AbstractModule
     end
   end
   
-  def reply(possible_factoid)
-    response = @brain.select() {|k,v| possible_factoid.include? k }
-    return [] unless response and not response.empty?
-    response.at_rand()[1].at_rand 
-  end
-
-  def maybe
-    yield if rand() < @probability
-  end
-
-  def reload
-    save_brain
-    load __FILE__
+  def maybe(chance = @probability)
+    yield if rand() < chance
   end
 
   def brain_file
