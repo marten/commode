@@ -5,13 +5,14 @@ It runs modules from the modules/ directory.
 
 # TODO
 
+  * escaping stuff
   * lange multilines kunnen maken
   * time-triggered events
-  * haakjes sluiten mits na n seconden geen nieuwe berichten
 
 # DONE
 
   * <reply>, <action>, <kick>
   * $who, $someone
   * regex triggers
-  
+  * close parentheses (implemented in Braces module)
+ 
