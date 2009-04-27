@@ -8,7 +8,7 @@ class Bucket < AbstractModule
     super(bot)
 
     @brain = Hash.new([])
-    @probability = 0.3
+    @probability = 0.7
     @master = "marten"
 
     load_brain rescue nil
@@ -34,6 +34,11 @@ class Bucket < AbstractModule
       puts "\n\nDEBUG\n"
       pp @brain
       puts "\n\n"
+
+    when /^#{@bot.nick}[:,] set @probability ([01]\.\d+)$/
+      return unless actor == @master
+      @probability = $1.to_f
+      @bot.say(target, "uh, sure")
     
     when /^#{@bot.nick}[:,] (.*)/
       respond_to_possible_factoid(target, actor, text)
