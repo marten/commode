@@ -26,7 +26,7 @@ class Control < AbstractModule
       
     when /^#{@bot.nick}[:,] kom je ook naar (\#.*)\??/
       @bot.join($1)
-      @bot.send(target, "Zie je daar!")
+      @bot.say(target, "Zie je daar!")
       return false
       
     when /^#{@bot.nick}[:,]\s(stil\seens|
@@ -36,12 +36,12 @@ class Control < AbstractModule
                               donder\sop|
                               is\sje\snumwis2\sal\saf\??)/x
       @bot.silence(300)
-      @bot.send(target, "Ok. Aan de numwis2 maar weer!")
+      @bot.say(target, "Ok. Aan de numwis2 maar weer!")
       return false
     
     when /^#{@bot.nick}[:,] herlaad/
       @bot.reload
-      @bot.send(target, "Ok, #{actor}. Helemaal nieuw en glimmend.")
+      @bot.say(target, "Ok, #{actor}. Helemaal nieuw en glimmend.")
       return false
     
     end

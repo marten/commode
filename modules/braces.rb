@@ -39,7 +39,7 @@ class Braces < AbstractModule
 
   def balance_braces(channel)
     if @braces[channel] > 0
-      @bot.send(channel, ")"*@braces[channel])
+      @bot.say(channel, ")"*@braces[channel])
     end
     @braces[channel] = 0
   end

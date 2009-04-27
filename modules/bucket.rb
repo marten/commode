@@ -20,15 +20,15 @@ class Bucket < AbstractModule
     when /^#{@bot.nick}[:,] vergeet (.*)/
       return unless actor == @master
       forget($1)
-      @bot.send(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
+      @bot.say(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
       
     when /^#{@bot.nick}[:,] (.*) \+?= (.*)/
       remember($1, $2)
-      @bot.send(target, "wat ooit")
+      @bot.say(target, "wat ooit")
       
     when /^#{@bot.nick}[:,] herhaal (.*)/
       response = recite($1)
-      @bot.send(target, response) if response
+      @bot.say(target, response) if response
     
     when /^#{@bot.nick}[:,] debug$/
       puts "\n\nDEBUG\n"
@@ -48,12 +48,12 @@ class Bucket < AbstractModule
 
   def incoming_join(fullactor, actor, target)
     response = @brain["join-" + actor]
-    @bot.send(target, response.at_rand) if response
+    @bot.say(target, response.at_rand) if response
   end
 
   def incoming_part(fullactor, actor, target, message)
     response = @brain["part-" + actor]
-    @bot.send(target, response.at_rand) if response
+    @bot.say(target, response.at_rand) if response
   end
 
   def reload
@@ -96,7 +96,7 @@ class Bucket < AbstractModule
       
       case line
       when /^<reply>(.*)/
-        @bot.send(channel, $1)
+        @bot.say(channel, $1)
       when /^<action>(.*)/
         @bot.act(channel, $1)
       when /^<kick (.*)>(.*)/
@@ -104,7 +104,7 @@ class Bucket < AbstractModule
       when /^<kick>(.*)/
         @bot.kick(channel, nick, $1)
       else
-        @bot.send(channel, line)
+        @bot.say(channel, line)
       end
     end
   end

@@ -12,10 +12,11 @@ module Commode
     end
 
     # Say something
-    def send(target, text)
+    def say(target, text)
       @irc.msg(target, text)
     end
     
+    # /me
     def act(target, text)
       @irc.act(target, text)
     end
