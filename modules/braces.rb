@@ -4,6 +4,7 @@ class Braces < AbstractModule
   CLOS_REGEXP = /[A-Za-z0-9]\)/
 
   SMILIES_REGEXP = /[;:X]-*[})>{(<|DO]|
+                    [})>{(<|O]-*[;:X]|
                     [|][:]-*[(]|
                     [:][']-*[(]/x
   
@@ -19,9 +20,11 @@ class Braces < AbstractModule
   end
 
   def incoming_channel(fullactor, nick, channel, text)
-    update_brace_count(channel, text)
-    balance_braces(channel)
-    @activity[channel] = Time.now
+    unless @bot.silenced?
+      update_brace_count(channel, text)
+      balance_braces(channel)
+      @activity[channel] = Time.now
+    end
   end
   
   private
