@@ -5,9 +5,12 @@ It runs modules from the modules/ directory.
 
 # TODO
 
+  * Logger instead of stdout
   * escaping stuff
   * lange multilines kunnen maken
   * time-triggered events
+  * case-sensitivity van keys
+  * one word triggers: do pluralized versions normalizations
 
 # DONE
 

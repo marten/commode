@@ -8,11 +8,14 @@ class Bucket < AbstractModule
     super(bot)
 
     @brain = Hash.new([])
-    @probability = 0.7
+    @probability = 0.2
     @master = "marten"
 
     load_brain rescue nil
-    Thread.new { while true; sleep 120; save_brain; end }
+  end
+
+  def incoming_welcome(channel)
+    respond_to_possible_factoid(channel, @bot.nick, "$welcome-#{channel}")
   end
 
   def incoming_channel(fullactor, actor, target, text)
@@ -23,22 +26,30 @@ class Bucket < AbstractModule
       @bot.say(target, "Ok, #{actor}. Laten we het er niet meer over hebben.")
       
     when /^#{@bot.nick}[:,] (.*) \+?= (.*)/
+      if actor == "vandread" || actor == "ijbema_"
+        @bot.say(target, "Ja hallo, ik ga mezelf toch geen zinnen aanleren.")
+        return
+      end 
+
       remember($1, $2)
-      @bot.say(target, "wat ooit")
+      @bot.say(target, "OK, sure.")
+      # respond_to_possible_factoid(target, actor, " $reply-ok ")
       
-    when /^#{@bot.nick}[:,] herhaal (.*)/
-      response = recite($1)
-      @bot.say(target, response) if response
+    when /^#{@bot.nick}[:,] herhaal (.*)$/
+      recite(target, actor, $1)
     
     when /^#{@bot.nick}[:,] debug$/
       puts "\n\nDEBUG\n"
       pp @brain
       puts "\n\n"
 
+    when /^#{@bot.nick}[:,] !wtf/
+      @bot.say(target, "#{actor}: reactie op ``#{@last_factoid_replied_to}''")
+
     when /^#{@bot.nick}[:,] set @probability ([01]\.\d+)$/
       return unless actor == @master
       @probability = $1.to_f
-      @bot.say(target, "uh, sure")
+      respond_to_possible_factoid(target, actor, "$reply-ok $reply-set")
     
     when /^#{@bot.nick}[:,] (.*)/
       respond_to_possible_factoid(target, actor, text)
@@ -46,8 +57,11 @@ class Bucket < AbstractModule
     else
       # zijn we gemute?
       return if @bot.silenced?
-      maybe { respond_to_possible_factoid(target, actor, text) }
-
+      if target == "#ijbema"
+        respond_to_possible_factoid(target, actor, text)
+      else
+        maybe { respond_to_possible_factoid(target, actor, text) }
+      end
     end
   end
 
@@ -62,7 +76,6 @@ class Bucket < AbstractModule
   end
 
   def reload
-    save_brain
     load __FILE__
     load_brain
   end
@@ -76,7 +89,7 @@ class Bucket < AbstractModule
       when /^\/(.*)\/$/
         text.match(Regexp.new($1))
       else
-        text.include? k
+        text.match(/(^|\s)#{k}(\s|$)/) rescue puts "ERROR"
       end
     end
     
@@ -84,7 +97,8 @@ class Bucket < AbstractModule
     
     factoids = factoids.to_hash
     # Then pick one factoid at random
-    factoid = factoids[factoids.keys.at_rand()]
+    key = factoids.keys.at_rand()
+    factoid = factoids[key]
     # Then pick one response this factoid at random
     response = factoid.at_rand()
     # Split at linebreaks and send as multiple messages
@@ -112,6 +126,8 @@ class Bucket < AbstractModule
         @bot.say(channel, line)
       end
     end
+
+    @last_factoid_replied_to = key
   end
 
   def remember(factoid, answer)
@@ -120,15 +136,27 @@ class Bucket < AbstractModule
     else
       @brain[factoid] << answer
     end
+
+    save_brain
   end
 
-  def remember_also(factoid, answer)
-    @brain[factoid] << answer
-  end
+  def recite(channel, nick, factoid, offset = 0)
+    if match = factoid.match(/(.*)\[(\d+)\]$/)
+      factoid = match[1]
+      offset = match[2].to_i rescue 0
+    end
 
-  def recite(factoid)
-    response = @brain[factoid].join('|')
-    response.empty? ? "Dat doet geen belletje rinkelen." : response
+    factoids = @brain[factoid]
+    if (not factoids) or (factoids.empty?)
+      @bot.say(channel, "#{nick}: die schiet me niet te binnen. misschien weet jan-eppo hem nog")
+    else
+      factoids[offset..offset+4].each_with_index do |obj, idx|
+	@bot.say(channel, "#{factoid}[#{idx+offset}] = #{obj}")
+      end
+      if more = factoids[offset+5..-1]
+	@bot.say(channel, "... en nog #{more.length}")
+      end
+    end
   end
 
   def forget(factoid, answer = nil)
@@ -137,6 +165,8 @@ class Bucket < AbstractModule
     else
       @brain[factoid].delete(answer)
     end
+    
+    save_brain
   end
   
   def maybe(chance = @probability)

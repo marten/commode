@@ -6,7 +6,14 @@ module Commode
     def handle_incoming_welcome(text, args)
       @channels.each do |channel| 
         @irc.join(channel)
-        # @irc.msg(channel, "oeps, verslapen o.0;;;; had hier een half uur geleden al moeten zijn")
+	@modules.each do |i|
+	  begin
+	    result = i.incoming_welcome(channel) if i.respond_to?(incoming_welcome)
+	    return if result == false
+	  rescue => e
+	    handle_error(e, args)
+	  end
+	end
       end
       return false
     end

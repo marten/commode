@@ -20,7 +20,8 @@ class Braces < AbstractModule
   end
 
   def incoming_channel(fullactor, nick, channel, text)
-    unless @bot.silenced?
+    # Disable this
+    unless true ||  @bot.silenced?
       update_brace_count(channel, text)
       balance_braces(channel)
       @activity[channel] = Time.now
