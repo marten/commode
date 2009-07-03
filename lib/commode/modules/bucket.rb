@@ -45,7 +45,7 @@ module Commode
           pp @brain
           puts "\n\n"
 
-        when /^#{@bot.nick}[:,] !wtf/
+        when /^#{@bot.nick}[:,] wtf\??$/
           @bot.say(target, "#{actor}: reactie op ``#{@last_factoid_replied_to}''")
 
         when /^#{@bot.nick}[:,] set @probability ([01]\.\d+)$/
