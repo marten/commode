@@ -5,6 +5,7 @@ It runs modules from the modules/ directory.
 
 # TODO
 
+  * per-channel state!
   * Logger instead of stdout
   * escaping stuff
   * lange multilines kunnen maken

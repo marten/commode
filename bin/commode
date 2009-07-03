@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby 
+
+$LOAD_PATH.push File.join(File.dirname(__FILE__), '..', 'lib')
+require 'commode'
+
+config_file = File.join(File.dirname(__FILE__), '..', 'config', 'default.yml')
+if !File.exists?(config_file)
+  STDERR.puts("Config file at ``#{config_file}'' not found")
+  exit 1
+end
+
+options = File.open(config_file) {|f| YAML::load(f)}
+
+@bot = Commode::Bot.new(options)
+@bot.modules << Commode::Modules::Control.new(@bot)  # Manage things like joining and parting channels, reloading
+@bot.modules << Commode::Modules::Bucket.new(@bot)   # Factoid delivering infobot
+@bot.irc_loop

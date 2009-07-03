@@ -1,8 +1,8 @@
 require 'rubygems'
 require 'net/yail'
 
-require 'wrappers'
-require 'handlers'
+require 'commode/wrappers'
+require 'commode/handlers'
 
 module Commode
 
