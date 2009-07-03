@@ -155,8 +155,8 @@ module Commode
           factoids[offset..offset+4].each_with_index do |obj, idx|
     	@bot.say(channel, "#{factoid}[#{idx+offset}] = #{obj}")
           end
-          if more = factoids[offset+5..-1]
-    	@bot.say(channel, "... en nog #{more.length}")
+          if more = factoids[offset+5..-1] > 0
+    	      @bot.say(channel, "... en nog #{more.length}")
           end
         end
       end
