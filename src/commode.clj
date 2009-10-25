@@ -60,7 +60,7 @@
 
 (defn process [message]
   (let [body (:body message)
-	responses (responses body)]
+	responses (respondes body)]
     (nth responses (rand-int (count responses)))))
 
 ;; GO GO GO GO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
