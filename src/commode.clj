@@ -8,8 +8,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def running false)
+;; some global constants and vars
+(def bot)                                       ; will hold pircbot object
+(def channels (ref {}))                         ; will hold :channame => Agent(chanstate
+(def memory-sleep-ms 5000)                      ; amount of time between reloading memory from database
+(def running true)                              ; yes, we want our monitor agents to run continuously
 
+;; irc settings
+(def irc-server "irc.mhil.net")                 ; connect to
+(def irc-nick   "ijbema")                       ; my nick
+(def irc-channels ["#brak" "#perio" "#ijbema"]) ; channels to join on startup
+
+;; database settings
 (let [db-host "localhost"
       db-port 3306
       db-name "ijbel"] 
@@ -21,23 +31,51 @@
            :user "root"
            :password ""}))
 
-;; amount of time between reloading memory from database
-(def memory-sleep-ms 5000)
-
-(def bot)
-
-(def irc-server "irc.mhil.net")
-(def irc-nick   "ijbetest")
-(def irc-channels ["#ijbema"])
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; util ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rand-elm [seq]
-  (nth seq (rand-int (count seq))))
+(defn rand-elm "returns a random element from the sequence, or nil for an empty sequence"
+  [seq] 
+  (let [size (count seq)]
+    (if (> size 0)
+      (nth seq (rand-int (count seq))))))
+
+(defn rand-elm-weighted "takes a [{:weight x, ...} ...] sequence, and returns a weighted-random element"
+  [seq]
+  nil) ;; TODO
 
 (defn starts-with [prefix string]
   (.startsWith string prefix))
+
+(defmacro async "just do this, I don't care" [& x]
+  `(send-off (agent nil) (fn [& _#] ~@x )))
+
+; (maybe 0.1 (foo) (bar))
+(defmacro maybe [chance & fns]
+  `(when (< (rand) ~chance)
+     ~@fns))
+    
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; irc helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn say [destination & messages]
+  (dorun (map (fn [message]
+                (.sendMessage bot destination message)
+                message)
+              messages))))
+
+(defn nicks [channel]
+  (map #(.getNick %) (.getUsers bot channel)))
+
+(defn join [channel]
+  (.joinChannel bot channel))
+
+(defn nick 
+  ([] (.getNick bot))
+  ([s] (.changeNick bot s)))
+
+(defn op 
+  ([channel nick] (.op bot channel nick)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; database ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47,9 +85,12 @@
   []
   (sql/with-connection db
     (sql/with-query-results res
-      [(str "SELECT factoids.id  AS `factoid_id`, "
-            "       triggers.id  AS `trigger_id`,  triggers.value  AS `trigger`, "
-            "       responses.id AS `response_id`, responses.value AS `response` "
+      [(str "SELECT factoids.id     AS `factoid_id`, "
+            "       triggers.id     AS `trigger_id`, "
+            "       triggers.value  AS `trigger`, "
+            "       responses.id    AS `response_id`, "
+            "       responses.value AS `response`, "
+            "       responses.karma AS `karma` "
             "  FROM factoids "
             "LEFT OUTER JOIN responses ON responses.factoid_id = factoids.id "
             "LEFT OUTER JOIN triggers  ON triggers.factoid_id  = factoids.id "
@@ -107,33 +148,6 @@
         :else 
           m))))
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; irc helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defmacro async "just do this, I don't care" [& x]
-  `(send-off (agent nil) (fn [& _#] ~@x )))
-
-(defn say [destination & messages]
-  (map (fn [message] 
-         (.sendMessage bot destination message)
-         message)
-       messages))
-
-(defn nicks [channel]
-  (map #(.getNick %) (.getUsers bot channel)))
-
-(defn join [channel]
-  (.joinChannel bot channel))
-
-(defn nick 
-  ([] (.getNick bot))
-  ([s] (.changeNick bot s)))
-
-(defn op 
-  ([channel nick] (.op bot channel nick)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; messages ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,13 +176,10 @@
     (:sender  msg)))
 
 (defn dispatch [msg]
-  (cond
-    (= (msg :message) "!help")
-      :help
-    (addressed? msg)
-      :lookup
-    :else
-      nil))
+  (let [normalized-message (strip-nick-prefix (strip-? (:message msg)))]
+    (cond
+      (= normalized-message "!help") :help
+      (addressed? msg) :lookup)))
 
 (defmulti responder dispatch)
 
@@ -177,27 +188,20 @@
        "ja hallo, nou moet ik zeker al m'n geheime truukjes op tafel leggen"))
 
 (defmethod responder :lookup [msg]
-  (action (origin msg)
-          (transform msg (lookup (:message msg)))))
+  (let [response (lookup (:message msg))]
+    (if response
+      (action (origin msg)
+              (transform msg (lookup (:message msg)))))))
 
 (defmethod responder :default [msg]
-  nil)
+  (let [response (lookup (:message msg))]
+    (if response
+      (maybe 0.2 (action (origin msg)
+                         (transform msg response))))))
 
-
-(defn action? [destination response]
-  (cond
-    (starts-with "<reply>" response) :reply
-    :else nil))
-
-(defmulti action action?)
-
-(defmethod action :reply [destination response]
+(defn action [destination response]
   (say destination 
        (.replaceFirst response "<reply>" "")))
-
-(defmethod action :default [destination response] 
-  nil)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; irc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
