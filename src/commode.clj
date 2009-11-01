@@ -5,12 +5,12 @@
 
 (require '[clojure.contrib.str-utils2 :as s])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; some global constants and vars
-(def bot)                                       ; will hold pircbot object
-(def channels (ref {}))                         ; will hold :channame => Agent(chanstate
+(def bot)                                       ; pircbot object
+(def channels (ref {}))                         ; {"channame" => Agent(chanstate)}
 (def memory-sleep-ms 5000)                      ; amount of time between reloading memory from database
 (def running true)                              ; yes, we want our monitor agents to run continuously
 
@@ -32,33 +32,28 @@
            :password ""}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; util ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; structs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn rand-elm "returns a random element from the sequence, or nil for an empty sequence"
-  [seq] 
-  (let [size (count seq)]
-    (if (> size 0)
-      (nth seq (rand-int (count seq))))))
+(defstruct msg  :this :channel :sender :login :hostname :message)
+(defstruct chan :channel :nicks)
 
-(defn rand-elm-weighted "takes a [{:weight x, ...} ...] sequence, and returns a weighted-random element"
-  [seq]
-  nil) ;; TODO
-
-(defn starts-with [prefix string]
-  (.startsWith string prefix))
-
-(defmacro async "just do this, I don't care" [& x]
-  `(send-off (agent nil) (fn [& _#] ~@x )))
-
-; (maybe 0.1 (foo) (bar))
-(defmacro maybe [chance & fns]
-  `(when (< (rand) ~chance)
-     ~@fns))
+(load "commode/util")
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; irc helpers ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn say [destination & messages]
+(defmacro do-chan [{channel :channel} fun & args]
+  `(send-off (@channels ~channel) 
+             (fn [a# & _#] 
+               (dorun (~fun a# ~@args))
+               a#)))
+
+(defmacro alter-chan [{channel :channel} fun & args]
+  `(send-off (@channels ~channel) 
+             ~fun ~@args))
+
+(defn say [chan & messages]
+  (do-chan chan
   (dorun (map (fn [message]
                 (.sendMessage bot destination message)
                 message)
@@ -68,7 +63,14 @@
   (map #(.getNick %) (.getUsers bot channel)))
 
 (defn join [channel]
+  (dosync
+   (alter channels assoc channel (agent (struct chan channel nil))))
   (.joinChannel bot channel))
+
+(defn part [channel]
+  (dosync
+   (alter channels assoc channel nil))
+  (.leaveChannel bot channel))
 
 (defn nick 
   ([] (.getNick bot))
@@ -151,8 +153,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; messages ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct msg :this :channel :sender :login :hostname :message)
-
 (defn nick-prefix-pattern []
   (re-pattern (str "^" (nick) "[:,]\\s")))
 
@@ -170,38 +170,29 @@
     (subs s 0 (dec (count s)))
     s))
 
-(defn origin [msg]
-  (if (:channel msg)
-    (:channel msg)
-    (:sender  msg)))
-
-(defn dispatch [msg]
+(defn dispatch [chan msg]
   (let [normalized-message (strip-nick-prefix (strip-? (:message msg)))]
     (cond
-      (= normalized-message "!help") :help
-      (addressed? msg) :lookup)))
+      (= normalized-message "karma++") :add-karma
+      (= normalized-message "karma--") :rem-karma
+      (addressed? msg)                 :lookup
+      :else                            :default)))
 
 (defmulti responder dispatch)
 
-(defmethod responder :help [msg]
-  (say (origin msg)
-       "ja hallo, nou moet ik zeker al m'n geheime truukjes op tafel leggen"))
+(defmethod responder :add-karma [{channel :channel} msg]
+  (say channel "maar dat kan ik, helemaal niet"))
 
-(defmethod responder :lookup [msg]
-  (let [response (lookup (:message msg))]
-    (if response
-      (action (origin msg)
-              (transform msg (lookup (:message msg)))))))
+(defmethod responder :rem-karma [{channel :channel} msg]
+  (say channel "maar dat kan ik, helemaal niet"))
 
-(defmethod responder :default [msg]
-  (let [response (lookup (:message msg))]
-    (if response
-      (maybe 0.2 (action (origin msg)
-                         (transform msg response))))))
+(defmethod responder :lookup [{channel :channel} msg]
+  (when-let [response (lookup (msg :message))]
+    (say channel (transform msg response))))
 
-(defn action [destination response]
-  (say destination 
-       (.replaceFirst response "<reply>" "")))
+(defmethod responder :default [{channel :channel msg]
+  (when-let [response (lookup (:message msg))]
+    (maybe 0.2 (say channel (transform msg response)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; irc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
