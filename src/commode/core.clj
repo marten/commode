@@ -1,12 +1,23 @@
-(ns main
-  (:use [clojure.contrib.sql :as sql :only ()])
+(ns commode.core
+  (:require [clojure.contrib.sql :as sql]
+            [clojure.contrib.str-utils2 :as s]
+            [swank.swank :as swank])
   (:import (org.jibble.pircbot PircBot)
-           (java.util.regex Pattern)))
-
-(require '[clojure.contrib.str-utils2 :as s])
+           (java.util.regex Pattern))
+  (:use (util))
+  (:gen-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; configuration ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def env (or (. (. System getenv) get "COMMODE_ENV") "development"))
+
+(defn dev-test-prod [ifdev iftest ifprod]
+  (cond
+    (= env "development") ifdev
+    (= env "test") iftest
+    (= env "production") ifprod
+    true ifdev))
 
 ;; some global constants and vars
 (def bot)                                       ; pircbot object
@@ -16,20 +27,26 @@
 
 ;; irc settings
 (def irc-server "irc.mhil.net")                 ; connect to
-(def irc-nick   "ijbema")                       ; my nick
-(def irc-channels ["#brak" "#perio" "#ijbema"]) ; channels to join on startup
+(def irc-nick   (dev-test-prod "ijbetest" 
+                               "ijbetest" 
+                               "ijbema"))       ; my nick
+(def irc-channels (dev-test-prod ["#ijbema"]
+                                 ["#ijbema"]
+                                 ["#brak" "#perio" "#ijbema"])) ; channels to join on startup
 
 ;; database settings
-(let [db-host "localhost"
+(let [db-host (dev-test-prod "localhost" "localhost" "10.177.154.146")
       db-port 3306
-      db-name "ijbel"] 
+      db-name "ijbel"
+      db-user (dev-test-prod "root" "root" "ijbel")
+      db-pass (dev-test-prod "" "" "Onefbuwag5")]
   (def db {:classname "com.mysql.jdbc.Driver" ; must be in classpath
            :subprotocol "mysql"
            :subname (str "//" db-host ":" db-port "/" db-name)
            ; Any additional keys are passed to the driver
            ; as driver-specific properties.
-           :user "root"
-           :password ""}))
+           :user db-user
+           :password db-pass}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; structs ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -86,10 +103,10 @@
 
 (defn say [chan & messages]
   (do-chan chan
-  (dorun (map (fn [message]
-                (.sendMessage bot destination message)
-                message)
-              messages))))
+           (dorun (map (fn [message]
+                         (.sendMessage bot chan message)
+                         message)
+                       messages))))
 
 (defn nicks [channel]
   (map #(.getNick %) (.getUsers bot channel)))
@@ -97,6 +114,7 @@
 (defn join [channel]
   (dosync
    (alter channels assoc channel (agent (struct chan channel nil))))
+  (println "JOINING" channel)
   (.joinChannel bot channel))
 
 (defn part [channel]
@@ -147,7 +165,7 @@
   [trigger]
   (if (and (= (first trigger) \/)
            (= (last  trigger) \/))
-    (s/drop (s/butlast trigger 1) 1)
+    (s/drop (s/butlast trigger 3) 3)
     nil))
 
 (defn trigger-matches? [trigger message]
@@ -195,14 +213,14 @@
 
 (defn strip-nick-prefix [s]
   (let [match (re-find (nick-prefix-pattern) s)]
-    (.replaceFirst s match "")))
+    (if match (.replaceFirst s match "") s)))
 
 (defn strip-? [s]
   (if (= \? (last s))
     (subs s 0 (dec (count s)))
     s))
 
-(defn dispatch [chan msg]
+(defn dispatch [msg]
   (let [normalized-message (strip-nick-prefix (strip-? (:message msg)))]
     (cond
       (= normalized-message "karma++") :add-karma
@@ -212,19 +230,19 @@
 
 (defmulti responder dispatch)
 
-(defmethod responder :add-karma [{channel :channel} msg]
-  (say channel "maar dat kan ik, helemaal niet"))
+(defmethod responder :add-karma [msg]
+  (say (:channel msg) "maar dat kan ik, helemaal niet"))
 
-(defmethod responder :rem-karma [{channel :channel} msg]
-  (say channel "maar dat kan ik, helemaal niet"))
+(defmethod responder :rem-karma [msg]
+  (say (:channel msg) "maar dat kan ik, helemaal niet"))
 
-(defmethod responder :lookup [{channel :channel} msg]
-  (when-let [response (lookup (msg :message))]
-    (say channel (transform msg response))))
-
-(defmethod responder :default [{channel :channel msg]
+(defmethod responder :lookup [msg]
   (when-let [response (lookup (:message msg))]
-    (maybe 0.2 (say channel (transform msg response)))))
+    (say (:channel msg) (transform msg response))))
+
+(defmethod responder :default [msg]
+  (when-let [response (lookup (:message msg))]
+    (maybe 0.2 (say (:channel msg) (transform msg response)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; irc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -233,25 +251,33 @@
   (responder (struct msg
                      this channel sender login hostname message)))
 
-(defn handlePrivateMessage [this sender login hostname message]q
+(defn handlePrivateMessage [this sender login hostname message]
   (handleMessage this nil sender login hostname message))
 
 (defn pircbot []
   (proxy [PircBot] []
+    (onServerResponse [code response] 
+                      (if (= code 376)
+                        (dorun (map join irc-channels))))
     (onMessage [channel sender login hostname message]
                (handleMessage this channel sender login hostname message))
+    (onInvite [us sender login hostname channel]
+              (join channel))
     (onPrivateMessage [sender login hostname message]
                       (handlePrivateMessage this sender login hostname message))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; GO GO GO GO ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def bot (pircbot))
-(.setVerbose bot true)
-(.connect bot irc-server)
-(.changeNick bot irc-nick)
-(map join irc-channels)
+(defn -main [& args]
+  
+  (def bot (pircbot))
+  (.setVerbose bot true)
+  (.connect bot irc-server)
+  (.changeNick bot irc-nick)
 
-(send-off memory memory-reloader)   ; periodically reload memory
+  (send-off memory memory-reloader) ; periodically reload memory
+  (swank/start-repl)                ; get me a nice repl
+)
 
 ; eof
