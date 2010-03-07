@@ -1,5 +1,5 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; util ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(ns commode.util
+  (:require [clojure.contrib.str-utils2 :as s]))
 
 (defn rand-elm "returns a random element from the sequence, or nil for an empty sequence"
   [seq] 
