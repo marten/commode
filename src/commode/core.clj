@@ -14,7 +14,6 @@
   (:use commode.boot)
   (:gen-class))
 
-
 (defn -main [& args]
   (.setVerbose irc/bot config/verbose)
   (irc-util/connect config/irc-server)
