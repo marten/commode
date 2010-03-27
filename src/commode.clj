@@ -1,5 +1,6 @@
 (ns commode
-  (:require [commode.bot]))
+  (:require [commode.bot]
+            (commode.modules help shutup latex dice factoids)))
 
 (defonce *bot* (ref {}))
 
@@ -14,10 +15,10 @@
      (let [bot (commode.bot/pircbot opts)]
        (dosync (ref-set *bot* bot))
        (doto (:this bot)
+         (.setVerbose true)
          (.connect (:server bot))
-         (.changeNick (:nick bot))
-                                        ;(doseq [channel (:channels bot)] (.joinChannel channel))
-         )
+         (.changeNick (:nick bot)))
+       (doseq [channel (:channels bot)] (.joinChannel (:this bot) channel))
        (additional-setup bot)
        bot))
   ([opts] (start-bot opts (fn [_]))))

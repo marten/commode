@@ -1,6 +1,9 @@
 (ns commode.util
   (:require [clojure.contrib.str-utils2 :as s])
-  (:gen-class))
+  (:import (java.net URL URLEncoder)
+           (java.io BufferedReader InputStreamReader OutputStreamWriter)
+           (java.text SimpleDateFormat ParsePosition)
+           (sun.misc BASE64Encoder)))
 
 (defn random-element 
   "returns a random element from the sequence, or nil for an empty sequence"
@@ -33,3 +36,23 @@
 (defmacro maybe "with chance x do this" [chance & fns]
   `(when (< (rand) ~chance)
      ~@fns))
+
+(defn get-url [x]
+  (with-open [a (-> (doto (-> x URL. .openConnection)
+                      (.setRequestProperty "User-Agent" "clojurebot")
+                      (.setRequestProperty "Accept" "application/xml"))
+                    .getInputStream InputStreamReader. BufferedReader.)]
+    (loop [buf (StringBuilder.) line (.readLine a)]
+      (if line
+        (recur (doto buf (.append line)) (.readLine a))
+        (.toString buf)))))
+
+(defn tinyurl [url]
+  (try 
+   (->> (get-url (str "http://shadyurl.com/create.php?myUrl=" (URLEncoder/encode url)))
+        (re-find #"(http://5z8.info/[^']+)'")
+        (second))
+   (catch Exception e
+     (-> "http://is.gd/api.php?longurl=%s" (format (URLEncoder/encode url))
+         get-url))))
+(def tinyurl (memoize tinyurl))

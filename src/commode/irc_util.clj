@@ -39,3 +39,8 @@
 
 (defn say "Send a message to a channel."
   [bot channel & messages] (doseq [message messages] (.sendMessage bot channel message)))
+
+;;;; Additional helpers
+
+(defn address [nick body]
+  (str nick ": " body))

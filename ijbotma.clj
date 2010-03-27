@@ -8,8 +8,8 @@
   
   ;; start up a bot
   (commode/start-bot {:server "irc.mhil.net"
-                      :nick "ijbetest"})
-
-)
+                      :nick "ijbetest"
+                      :channels ["#ijbema"]
+                      :db ["localhost" "root" ""]}))
 
 (-main *command-line-args*)

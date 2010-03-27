@@ -1,17 +1,28 @@
 (ns commode.message
-  (:gen-class))
+  (:require [commode.irc-util :as irc])
+  (:use [clojure.contrib.str-utils2 :only (join)]))
 
-;; (defn nick-prefix-pattern []
-;;   (re-pattern (str "^" (nick) "[:,]\\s")))
+(defn addressed-to-anyone? [{body :body}]
+  (re-find #"^.+: " body))
 
-;; (defn addressed? [msg]
-;;   (when (or (re-find (nick-prefix-pattern) (:message msg))
-;;             (nil? (:channel msg)))
-;;     msg))
+(defn nick-prefix-pattern [bot]
+  (re-pattern (str "^" (irc/nick bot) "[:,]\\s")))
 
-;; (defn strip-nick-prefix [s]
-;;   (let [match (re-find (nick-prefix-pattern) s)]
-;;     (if match (.replaceFirst s match "") s)))
+(defn addressed? [bot message]
+  (or (re-find (nick-prefix-pattern bot) (:body message))
+      false))
+
+(defn strip-nick-prefix [bot body]
+  (let [match (re-find (nick-prefix-pattern bot) body)]
+    (if match (.replaceFirst body match "") body)))
+
+(defn extract-message [bot {body :body}]
+  (->> body
+       (strip-nick-prefix bot)))
+
+(defn reply [{body :body sender :sender} & strings]
+  (str sender ": "
+       (join " " strings)))
 
 ;; (defn strip-? [s]
 ;;   (if (= \? (last s))
