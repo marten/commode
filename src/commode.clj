@@ -1,8 +1,7 @@
 (ns commode
   (:require [commode.bot]
+            [commode.config]
             (commode.modules help shutup latex dice factoids)))
-
-(defonce *bot* (ref {}))
 
 (defn- wall-hack-method [class-name name- params obj & args]
   (-> class-name
@@ -13,7 +12,7 @@
 (defn start-bot 
   ([opts additional-setup]
      (let [bot (commode.bot/pircbot opts)]
-       (dosync (ref-set *bot* bot))
+       (commode.config/init bot)
        (doto (:this bot)
          (.setVerbose true)
          (.connect (:server bot))

@@ -1,5 +1,17 @@
-;; (ns commode.config
-;;   (:gen-class))
+(ns commode.config
+  (:require [dk.bestinclass.clojureql :as cql]
+            [dk.bestinclass.clojureql.backend.mysql :as cql-mysql]))
+
+;;;; Slots
+
+(def bot (ref {}))
+(def db (ref nil))
+
+(defn init [bot]
+   (let [[host user pass dbname] (:db bot)]
+     (dosync
+      (ref-set bot bot)
+      (ref-set db (cql/make-connection-info "mysql" (str "//" host "/" dbname) user pass))))
 
 ;; ;;;; Environment. To support development vs. unit/function tests vs. production
 
