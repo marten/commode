@@ -5,4 +5,4 @@ for f in lib/*.jar; do
     CLASSPATH=$CLASSPATH:$f
 done
 
-java -Xmx1G -cp $CLASSPATH clojure.main ijbotma.clj
+java -Xmx1G -cp $CLASSPATH clojure.main $1
