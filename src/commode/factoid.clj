@@ -18,16 +18,49 @@
                          "ORDER BY `factoid_id`"))
            (doall results)))
 
-(defn find-trigger [value]
-  (cql/run))
-
 (defn trigger-exists? [body]
   (cql/run [@db results]
            (cql/query triggers * (like ~body (concat "'%'" value "'%'")))
-           (first results)))-
+           (first results)))
 
 (defn responses-for-trigger [trigger]
   (let [fid (:factoid_id trigger)]
     (cql/run [@db results]
              (cql/query responses * (= factoid_id ~fid))
              (doall results))))
+
+(defn create-factoid []
+  (let [now (java.util.Date.)]
+    (cql/run [@db results]
+             (cql/batch-statements
+              (cql/insert-into factoids [created_at ~now
+                                         updated_at ~now])
+              (cql/raw "SELECT LAST_INSERT_ID()"))
+             results)))
+
+(defn create-trigger  [{factoid_id :factoid_id} value]
+  (let [now (java.util.Date.)]
+    (cql/run @db
+             (cql/insert-into triggers [factoid_id ~factoid_id
+                                        value      ~value
+                                        created_at ~now
+                                        updated_at ~now]))))
+
+(defn create-response [{factoid_id :factoid_id} value]
+  (let [now (java.util.Date.)]
+    (cql/run @db
+             (cql/insert-into triggers [factoid_id ~factoid_id
+                                        value      ~value
+                                        created_at ~now
+                                        updated_at ~now]))))
+
+(defn create-or-update-pair [trigger response]
+  (let [trigger-record (trigger-exists? trigger)]
+    (if trigger-record
+      [trigger-record 
+       (create-response {:factoid_id (:factoid_id trigger-record)} response)]
+      (let [factoid-record  (create-factoid)
+            trigger-record  (create-trigger factoid-record trigger)
+            response-record (create-response factoid-record response)]
+        [trigger-record 
+         response-record]))))
