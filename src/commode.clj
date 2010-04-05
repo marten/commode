@@ -1,7 +1,7 @@
 (ns commode
   (:require [commode.bot]
             [commode.config]
-            (commode.modules help shutup latex dice factoids)))
+            (commode.modules help shutup latex dice factoids joinpart)))
 
 (defn- wall-hack-method [class-name name- params obj & args]
   (-> class-name
