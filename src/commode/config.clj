@@ -1,14 +1,19 @@
-(ns commode.config
-  (:require [dk.bestinclass.clojureql :as cql]
-            [dk.bestinclass.clojureql.backend.mysql :as cql-mysql]))
+(ns commode.config)
 
 ;;;; Slots
 
 (def bot (ref {}))
-(def db (ref nil))
+(def db (ref {}))
+
+(defn make-connection-info [host user pass dbname]
+  {:classname "com.mysql.jdbc.Driver"
+   :subprotocol "mysql"
+   :subname (str "//" host ":" 3306 "/" dbname)
+   :user user
+   :password pass})
 
 (defn init [botobj]
    (let [[host user pass dbname] (:db botobj)]
-     (dosync
+     (dosync 
       (ref-set bot botobj)
-      (ref-set db (cql/make-connection-info "mysql" (str "//" host "/" dbname) user pass)))))
+      (ref-set db (make-connection-info host user pass dbname)))))

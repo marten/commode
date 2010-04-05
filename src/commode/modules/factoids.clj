@@ -1,6 +1,8 @@
 (ns commode.modules.factoids
   (:require [commode.irc-util :as irc]
-            [commode.factoid :as factoid])
+            [commode.records.factoid :as factoid]
+            [commode.records.trigger :as trigger]
+            [commode.records.response :as response])
   (:use [commode.core]
         [commode.message]
         [commode.util :only (random-element)]))
@@ -30,8 +32,8 @@
               (dfn (and (not (addressed-to-anyone? message))
                         (or (= channel "#ijbema") ; in #ijbema, the bot always listens
                             (< (rand) @probability))))
-  (when-let [trigger (factoid/trigger-exists? (extract-message bot message))]
-    (let    [responses (factoid/responses-for-trigger trigger)
+  (when-let [trigger (random-element (trigger/find-all-by-message m))]
+    (let    [responses (response/find-all-by-factoid-id (:factoid_id trigger))
              response  (random-element responses)]
       (println "  Responding with:" (:value response))
       (dosync (alter channels assoc channel (assoc (@channels channel) :last-response {:trigger trigger 
@@ -48,10 +50,10 @@
 (defresponder ::repeat-responses 0
               (dfn (and (addressed? bot message)
                         (re-find #"^herhaal " m)))
-  (let [trigger (factoid/trigger-exists? m)]
+  (let [trigger (trigger/find-all-by-message m)]
     (if (not trigger)
       (irc/say bot channel (reply message "dat ken ik niet"))
-      (let    [responses (factoid/responses-for-trigger trigger)]
+      (let    [responses (response/find-all-by-factoid-id (:factoid_id trigger))]
         (doseq [response responses]
           (irc/say bot channel (str "[" (:id response) "] " (:value response))))))))
 
