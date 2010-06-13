@@ -12,7 +12,7 @@
                                           :sender sender
                                           :body body})]
     (println "Processing in" channel "from" sender "saying" message)
-    (core/responder bot channel message)))
+    (trampoline core/responder bot channel message)))
 
 (defn handlePrivateMessage [bot sender login hostname message]
   (handleMessage bot sender sender login hostname message))

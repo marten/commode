@@ -6,6 +6,7 @@
 
 (defresponder ::log -10
               (dfn true)
+  (println (meta message))
   ;; first create a log entry
   (log/create {:channel channel
                :nick (:sender message)

@@ -29,9 +29,10 @@
 
 ;;;; Random responding to channel messages
 (defresponder ::random-factoid-response 20
-              (dfn (and (not (addressed-to-anyone? message))
-                        (or (= channel "#ijbema") ; in #ijbema, the bot always listens
-                            (< (rand) @probability))))
+              (dfn (or (addressed? bot message)
+                       (and (not (addressed-to-anyone? message))
+                            (or (= channel "#ijbema") ; in #ijbema, the bot always listens
+                                (< (rand) @probability)))))
   (when-let [trigger (random-element (trigger/find-all-by-message m))]
     (let    [responses (response/find-all-by-factoid-id (:factoid_id trigger))
              response  (random-element responses)]
@@ -50,7 +51,7 @@
 (defresponder ::repeat-responses 0
               (dfn (and (addressed? bot message)
                         (re-find #"^herhaal " m)))
-  (let [trigger (trigger/find-all-by-message m)]
+  (let [trigger (random-element (trigger/find-all-by-message m))]
     (if (not trigger)
       (irc/say bot channel (reply message "dat ken ik niet"))
       (let    [responses (response/find-all-by-factoid-id (:factoid_id trigger))]

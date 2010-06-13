@@ -18,7 +18,8 @@
 
 (defresponder ::mute-in 0
               (dfn (addressed? bot message)
-                   (re-find #"^!mute" m))
+                   (or (re-find #"^!mute$" m)
+                       (re-find #"^stfu$" m)))
   (mute channel)
   (irc/say bot channel (reply message "okay, shutting up now")))
 
@@ -27,6 +28,13 @@
                    (re-find #"^!unmute" m))
   (unmute channel)
   (irc/say bot channel (reply message "bedankt, ik kon me al haast niet meer inhouden")))
+
+(defresponder ::is-muted? 0
+              (dfn (addressed? bot message)
+                   (re-find #"^!muted\\?" m))
+  (irc/say bot channel (if (muted? channel)
+                         "jup, ik ben m'n bek aan het houden"
+                         "nee hoor, jullie zeggen gewoon niks interessants")))
 
 (defresponder ::muted? 19
               (dfn (not (addressed? bot message))

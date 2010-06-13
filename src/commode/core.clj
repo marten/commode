@@ -53,13 +53,14 @@
 (defmacro defresponder [key priority check-fn & body]
   `(do
      (defmethod responder ~key [~'bot ~'channel ~'message]
-       (let [~'mesage (vary-meta ~'message assoc ~key true) ;note that we've seen this message
-             ~'body   (:body ~'message)
-             ~'m      (:extracted (meta ~'message))]
+       (let [~'message (vary-meta ~'message assoc ~key true) ;note that we've seen this message
+             ~'body    (:body ~'message)
+             ~'m       (:extracted (meta ~'message))]
          ~@body))
      (add-dispatch-hook ~key
                         ~priority
                         (fn [~'bot ~'channel ~'message] 
+                          (println (meta ~'message))
                           (when (not (~key (meta ~'message))) ; skip if we've seen this message before
                             (let [~'body (:body ~'message)
                                   ~'m    (:extracted (meta ~'message))]

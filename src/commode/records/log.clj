@@ -2,13 +2,12 @@
   (:require [clojure.contrib.sql :as sql])
   (:use [commode.config :only (db)]))
 
-(defn create []
-  (let [now (java.util.Date.)]
+(defn create [attrs]
+  (let [now (java.util.Date.)
+        attrs (merge attrs {:created_at now :updated_at now})]
     (sql/with-connection @db
       (sql/transaction 
-       (sql/insert-values :logs
-                          [:created_at :updated_at] 
-                          [now now])
+       (sql/insert-records :logs attrs)
        (let [id (sql/with-query-results res 
                   ["SELECT LAST_INSERT_ID()"] 
                   (val (first (first res))))]

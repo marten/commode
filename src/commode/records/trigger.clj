@@ -24,5 +24,5 @@
 (defn find-all-by-message [body]
   (sql/with-connection @db
     (sql/with-query-results rows
-      ["SELECT * FROM triggers WHERE ? LIKE CONCAT('%', value, '%')" body]
+      ["SELECT * FROM triggers WHERE ? RLIKE CONCAT('[[:<:]]', value, '[[:>:]]')" body]
       (into [] rows))))
