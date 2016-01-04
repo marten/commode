@@ -3,5 +3,4 @@
 *#
 .DS_Store
 classes/*
-commode.jar
-commode-standalone.jar
+target/*
